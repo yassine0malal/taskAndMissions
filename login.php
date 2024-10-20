@@ -1,16 +1,30 @@
 <?php
-    include 'header.php';
     session_start();
-    include 'condb.php';
-    if (empty($_SESSION['csrf_token'])) {
-            $cle = bin2hex(random_bytes(32));  // Generate a random token
-            $_SESSION['depart']='desactiver';
+    include 'header.php';
+    // include 'condb.php';
+    // var_dump($_SESSION);
+    // if (empty($_SESSION['csrf_token'])) {
+        
+        $_SESSION['csrf_token']  = bin2hex(random_bytes(32));  // Generate a random token
+        $cle=$_SESSION['csrf_token'];
+
+        $_SESSION['depart']='desactiver';
             $sql = "INSERT INTO tokens (nom) VALUES (?)";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("s", $cle);  // Bind the token as a string parameter
             $stmt->execute();
             $stmt->close();
-    }
+// echo $cle;
+            // $sqlGet = "select * from tokens";
+            // $resultGet = $conn->query($sqlGet);
+            // $rowGet = $resultGet->fetch_assoc();
+
+    // }else{
+    //     $cle=$_SESSION['csrf_token'];
+
+
+    // }
+    // echo $_SESSION['csrf_token'];
 
     ?>
 
@@ -70,10 +84,11 @@
         <div class="form-warp">
         <form  method="post" action="index.php">
             <h1>Log In</h1>
-            <input type="hidden" name="csrf_token" value="<?php echo $cle; ?>">
+            <input type="hidden" name="csrf_token" value="<?= $cle; ?>">
+
             <input type="text" name="email" placeholder=" entrer l'email ">
             <input type="password" name="password" required placeholder=" entrer le mot de passe ">
-            <input type="submit" value="Log In" required name="logIn">
+            <input type="submit" value="Log In"  name="logIn">
             <p style="color:white">you don't have an account ?  &nbsp;<a href="register.php" required name="SignUp" name="signUp">Sign Up</a></p>
         </form>
     </div>

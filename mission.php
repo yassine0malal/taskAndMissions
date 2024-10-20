@@ -2,9 +2,14 @@
 session_start();
 include_once 'header.php';
 include_once 'menu.php';
+// $_SESSION['csrf_token']  = bin2hex(random_bytes(32));  // Generate a random token
+// $cle = $_SESSION['csrf_token'];
 
+// echo "<br><br><br>".$_SESSION['csrf_token'];
+?>
+
+<?php
 // Database connection assumed to be included
-
 if (isset($_SESSION['user_id']) and isset($_SESSION['userEmail'])) {
     $userId = $_SESSION['user_id'];
     $userEmail = $_SESSION['userEmail'];
@@ -15,8 +20,16 @@ if (isset($_SESSION['user_id']) and isset($_SESSION['userEmail'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['createMiss'])) {
+// var_dump("from function".$_SESSION['csrf_token_mession']);
         $nom = htmlspecialchars($_POST['nom']);
         $description =htmlspecialchars($_POST['description']);
+        // register the insertion of mission
+        $operation = 'add a new missions that called ' . $nom;
+        $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+        $stmt22 = $conn->prepare($sql22);
+        $stmt22->bind_param("is", $userId, $operation);
+        $stmt22->execute();
+        $stmt22->close();
 
         $sql = "INSERT INTO missions (nom, description, user_id) VALUES (?,?,?)";
         $stmt = $conn->prepare($sql);
@@ -24,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $stmt->execute();
         if ($result) {
             header("location: mission.php");
-        } else {
+        }else {
             var_dump("Error: " . $sql . "<br>" .$conn->error);
         }
     }
@@ -42,13 +55,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtCheck->execute();
         $resultCheck = $stmtCheck->get_result();
 
+
+
         if (mysqli_num_rows($resultCheck) > 0) {
             // If already shared, update the access level
+
+            $operation = ' update sharing missions with  ' . $sharedUserId;
+            $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+            $stmt22 = $conn->prepare($sql22);
+            $stmt22->bind_param("is", $userId, $operation);
+            $stmt22->execute();
+            $stmt22->close();
+
             $sqlUpdate = "UPDATE shared_mission SET droit='$droit' WHERE mission_id= ? AND user_partage_id= ?";
             $stmtUpdate = $conn->prepare($sqlUpdate);
             $stmtUpdate->bind_param("ii", $missionId, $sharedUserId);
             $stmtUpdate->execute();
             $resultUpdate = $stmtUpdate->get_result();
+
             if ($resultUpdate) {
                 // header("location: mission.php");
                 $stmtUpdate->close();
@@ -58,6 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // If not already shared, insert a new record
+
+            $operation = ' sharing missions with  ' . $sharedUserId;
+            $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+            $stmt22 = $conn->prepare($sql22);
+            $stmt22->bind_param("is", $userId, $operation);
+            $stmt22->execute();
+            $stmt22->close();
+
             $sqlShare = "INSERT INTO shared_mission (mission_id, user_partage_id, droit) VALUES (?, ?,?)";
             $stmtShare = $conn->prepare($sqlShare);
             $stmtShare->bind_param("iis", $missionId, $sharedUserId, $droit);
@@ -99,6 +131,13 @@ if (isset($_POST['modifierMission'])) {
     $nom = htmlspecialchars($_POST['nom']);
     $description = htmlspecialchars($_POST['description']);
 
+    $operation = ' update missions that to  ' . $nom;
+    $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+    $stmt22 = $conn->prepare($sql22);
+    $stmt22->bind_param("is", $userId, $operation);
+    $stmt22->execute();
+    $stmt22->close();
+
     $sqlUpdate = "UPDATE missions SET nom= ?, description= ? WHERE id=?";
     $stmtUpdate = $conn->prepare($sqlUpdate);
     $stmtUpdate->bind_param("ssi", $nom, $description, $id);
@@ -128,6 +167,7 @@ if (isset($_POST['modifierMission'])) {
                     <input type="text" class="form-control" placeholder="Entrer la description de la mission" name="description" required>
                 </div>
                 <br><br>
+                <input type="hidden" name="csrf_token_mession" value="<?= $cle; ?>">
                 <div class="text-center">
                     <button type="submit" name="createMiss" class="btn btn-primary mb-2">Create</button>
                 </div>
@@ -165,6 +205,7 @@ if (isset($_POST['modifierMission'])) {
                     <?php else: ?>
                         <form action="" method="post" class="text-center ">
                             <input type="hidden" name="id" value="<?= $data2['id'] ?>">
+                            <input type="hidden" name="nn" value="<?= $data2['nom']; ?>">
                             <button type="submit" class="btn btn-danger me-4" name="supprimer">Supprimer</button>
                             <button type="submit" class="btn btn-warning me-4" name="modifier">Modifier</button>
                             <button type="button" class="btn btn-success me-4" onclick="document.getElementById('share-form-<?= $data2['id'] ?>').style.display='block';">Share</button>
@@ -211,11 +252,18 @@ if (isset($_POST['modifierMission'])) {
 // Delete Mission
 if (isset($_POST['supprimer'])) {
     $id = $_POST['id'];
+    $nomc = $_POST['nn'];
     $sql5 = "DELETE FROM missions WHERE id = ?";
     $stmt = $conn->prepare($sql5);
     $stmt->bind_param("i", $id);
     $result = $stmt->execute();
 
+    $operation = ' delete the missions that called ' . $nomc;
+    $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+    $stmt22 = $conn->prepare($sql22);
+    $stmt22->bind_param("is", $userId, $operation);
+    $stmt22->execute();
+    $stmt22->close();
     if ($result) {
         // header("location: mission.php");
     } else {

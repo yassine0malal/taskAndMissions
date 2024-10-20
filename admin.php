@@ -26,8 +26,14 @@ if (isset($_POST['toggle_status'])) {
 }
 
 // Récupérer la liste des utilisateurs
-$sqlUsers = "SELECT id, nom, email, etat FROM users";
-$resultUsers = $conn->query($sqlUsers);
+$role = 'admin';
+$sqlUsers = "SELECT id, nom, email, etat FROM users WHERE droit != ?";
+$stmt = $conn->prepare($sqlUsers);
+$stmt->bind_param("s",$role);
+$stmt->execute();
+$resultUsers = $stmt->get_result();
+
+// $resultUsers = $conn->query($sqlUsers);
 ?>
 
 <!DOCTYPE html>

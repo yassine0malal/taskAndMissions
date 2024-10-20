@@ -2,7 +2,7 @@
 session_start();
 include 'header.php';
 // include 'menu';
-if($_SESSION['user_id'] === 16 and $_SESSION['userEmail'] === 'admine@gmail.com' and $_SESSION['userDroit'] === 'admin'){
+if($_SESSION['user_id'] == 16 and $_SESSION['userEmail'] === 'admine@gmail.com' and $_SESSION['userDroit'] === 'admin'){
     $userIdConn = $_SESSION['user_id'];
     $userEmailConn = $_SESSION['userEmail'];
     $userDroitConn = $_SESSION['userDroit'];
@@ -106,6 +106,12 @@ $sqlSharedTasks = "
     JOIN tasks t ON st.task_id = t.id
     JOIN users u ON st.user_partage_id = u.id";
 $resultSharedTasks = $conn->query($sqlSharedTasks);
+
+// Récupérer des operations 
+$sqlOperations = "SELECT * FROM operations";
+$resultOperations = $conn->query($sqlOperations);
+// $datasOfresultOperations = $resultOperations->fetch_all(MYSQLI_ASSOC);
+
 ?>
 
 <br><br><br><br>
@@ -114,7 +120,7 @@ $resultSharedTasks = $conn->query($sqlSharedTasks);
 
  <!-- Surveillance des missions partagées -->
  <h3 class="mt-5">Modifications sur les Missions Partagées</h3>
-    <table class="table table-bordered">
+    <table class="table table-bordered table-active">
         <thead>
             <tr>
                 <th>ID Mission</th>
@@ -139,7 +145,7 @@ $resultSharedTasks = $conn->query($sqlSharedTasks);
    
   <!-- Surveillance des tâches partagées -->
   <h3 class="mt-5" >Modifications sur les Tâches Partagées</h3>
-    <table class="table table-bordered">
+    <table class="table table-bordered table-active">
         <thead>
             <tr>
                 <th>ID Tâche</th>
@@ -155,6 +161,26 @@ $resultSharedTasks = $conn->query($sqlSharedTasks);
                 <td><?= htmlspecialchars($task['task_name']) ?></td>
                 <td><?= htmlspecialchars($task['user_name']) ?></td>
                 <td><?= htmlspecialchars($task['droit']) ?></td>
+            </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+  <!-- Surveillance des operations sur le missions et les taches : -->
+  <h3 class="mt-5" >Modifications des operations des utilisateurs </h3>
+    <table class="table table-bordered table-active">
+        <thead>
+            <tr>
+                <th>ID de la personne qui fait l'operation</th>
+                <th>Nom de l'operation </th>
+                <th>la date et l'heure de l'operation </th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ($operation = $resultOperations->fetch_assoc()): ?>
+            <tr>
+                <td><?= $operation['user_id'] ?></td>
+                <td><?= htmlspecialchars($operation['operation']) ?></td>
+                <td><?= htmlspecialchars($operation['dateheur']) ?></td>
             </tr>
             <?php endwhile; ?>
         </tbody>

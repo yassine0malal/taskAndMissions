@@ -85,6 +85,7 @@ if (window.history.replaceState) {
                             <div class="text-center">
                                 <form method="post">
                                     <input type="hidden" name="id" value="<?= $data['id'] ?>">
+                                    <input type="hidden" name="nn" value="<?= $data['nom'] ?>">
                                     <button type="submit" class="btn btn-danger" name="envoyer">Supprimer</button>
                                     <button type="button" class="btn btn-warning" onclick="document.getElementById('edit-form-<?= $data['id'] ?>').style.display='block';">Modifie</button>
                                     <button type="button" class="btn btn-success" onclick="document.getElementById('share-form-<?= $data['id'] ?>').style.display='block';">Share</button>
@@ -166,6 +167,14 @@ if (window.history.replaceState) {
             $stmt->bind_param("ssssi", $nom, $description, $result, $priorite, $userId);
             $stmt->execute();
             $stmt->close();
+
+            $operation = 'create new task that called ' . $nom;
+            $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+            $stmt22 = $conn->prepare($sql22);
+            $stmt22->bind_param("is", $userId, $operation);
+            $stmt22->execute();
+            $stmt22->close();
+            
             
             // Reload the page
             // header('location: ' . $_SERVER['PHP_SELF']);
@@ -179,6 +188,13 @@ if (window.history.replaceState) {
             $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
             $result = htmlspecialchars($_POST['result'], ENT_QUOTES, 'UTF-8');
             $priorite = htmlspecialchars($_POST['priorite'], ENT_QUOTES, 'UTF-8');
+
+            $operation = 'update task to  ' . $nom;
+            $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+            $stmt22 = $conn->prepare($sql22);
+            $stmt22->bind_param("is", $userId, $operation);
+            $stmt22->execute();
+            $stmt22->close();
 
             // Update task
             $sqlUpdate = "UPDATE tasks SET nom = ?, description = ?, resultat = ?, priorite = ? WHERE id = ?";
@@ -212,9 +228,23 @@ if (window.history.replaceState) {
                 $stmtUpdate->bind_param("sii", $accessLevel, $taskId, $sharedUserId);
                 $stmtUpdate->execute();
                 $stmtUpdate->close();
+                // register the operation 
+                $operation = 'update sharing task to  ' . $sharedUserId;
+                $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+                $stmt22 = $conn->prepare($sql22);
+                $stmt22->bind_param("is", $userId, $operation);
+                $stmt22->execute();
+                $stmt22->close();
                 echo '<script type="text/javascript">alert("Les droits d\'accès ont été mis à jour avec success!");</script>';
             } else {
                 // Task not yet shared, insert a new record
+                $operation = 'share task user  ' . $userEmail . ' to user id ' . $sharedUserId;
+                $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+                $stmt22 = $conn->prepare($sql22);
+                $stmt22->bind_param("is", $userId, $operation);
+                $stmt22->execute();
+                $stmt22->close();
+
                 $sqlShare = "INSERT INTO shared_tasks (task_id, user_partage_id, droit) VALUES (?, ?, ?)";
                 $stmtShare = $conn->prepare($sqlShare);
                 $stmtShare->bind_param("iis", $taskId, $sharedUserId, $accessLevel);
@@ -234,11 +264,19 @@ if (window.history.replaceState) {
     // Handle task deletion
     if (isset($_POST['envoyer'])) {
         $id = $_POST['id'];
+        $nomc = $_POST['nn'];
         $sql = "DELETE FROM tasks WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $stmt->close();
+
+        $operation = 'deleted task  that called  ' . $nomc;
+        $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
+        $stmt22 = $conn->prepare($sql22);
+        $stmt22->bind_param("is", $userId, $operation);
+        $stmt22->execute();
+        $stmt22->close();
         // $result = mysqli_query($conn, $sql);
     }
     ?>

@@ -8,9 +8,9 @@ include 'menu.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userEmail = $conn->real_escape_string($_POST['email']);
-    if(!filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
-        header("location: login.php");
-    }
+    // if(!filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
+    //     header("location: login.php");
+    // }
     $password = htmlspecialchars($_POST['password'], ENT_QUOTES, 'UTF-8');
 
     $sql = "SELECT * FROM users WHERE email = ?";
@@ -18,29 +18,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("s", $userEmail);
     $stmt->execute();
     $result = $stmt->get_result();
+    
 
     $csrf=$_POST['csrf_token'];
     // var_dump($csrf);
-    // var_dump("compare");
-
-    $sql1= "SELECT nom , UNIX_TIMESTAMP(created_at) AS time_in_seconds FROM tokens";
+    // exit();
+// if($_SESSION['depart']==='desactiver'){
+    $sql1= "SELECT nom , UNIX_TIMESTAMP(created_at) AS time_in_seconds  FROM tokens";
     $result1 = mysqli_query($conn, $sql1);
     $datas = mysqli_fetch_all($result1, MYSQLI_ASSOC);
-        foreach($datas as $row){
-            $rowGet= $row['nom'];
-            $time = $row['time_in_seconds'];
-        }
 
-        // var_dump($time);
+        foreach($datas as $row){
+            $rowGet= $row['nom']??'null';
+            $time = $row['time_in_seconds']??0;
+            // echo "ggg " . $rowGet." ggg <br>";
+        }
+    // }
         $currentTimeInSeconds = time();
         $timOfSession = $currentTimeInSeconds - $time;
-        // var_dump($currentTimeInSeconds);
-        // var_dump($timOfSession);
-    
         
+                // var_dump($time,$currentTimeInSeconds,$timOfSession);
+                // exit();
+
+                $sqlrestet = "DELETE FROM tokens";
+                $resultreset = mysqli_query($conn, $sqlrestet);
+                unset($_SESSION['csrf_token']);
 
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
+        // var_dump($user);
         $stmt->close();
         if($user['etat'] != 1)
         {
@@ -53,28 +59,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php
             
         }
+
         // Verify password and create session  and also verify csrf token
         if (password_verify($password, $user['password']) and $user['etat'] == 1 and $csrf === $rowGet  and $timOfSession < 10) {
-            $sqlrestet = "DELETE FROM tokens";
-            $resultreset = mysqli_query($conn, $sqlrestet);
+            // $sqlrestet = "DELETE FROM tokens";
+            // $resultreset = mysqli_query($conn, $sqlrestet);
             $_SESSION['depart']='active';
 
             $_SESSION['user_id'] = htmlspecialchars($user['id']);
             $_SESSION['userEmail'] = htmlspecialchars($user['email']);
-            unset($_SESSION['csrf_token']);
+            // unset($_SESSION['csrf_token']);
+
 
             if($user['email'] === 'admine@gmail.com' and $user['droit'] === 'admin'){
                 $_SESSION['userDroit'] = htmlspecialchars($user['droit']);
                 header("Location: admin.php");
             }else{
                 $_SESSION['userDroit'] = $user['droit'];
-                // header("Location: index.php");
+                header("Location: index.php");
             }
             
         } else if($_SESSION['depart'] === 'active'){  
-            header("location: index.php");
-        }
-        else{        
+            // header("location: index.php");
+        }else{        
             header("location: login.php");
         }
     
