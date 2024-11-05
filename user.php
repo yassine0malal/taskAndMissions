@@ -1,7 +1,11 @@
 <?php
-// session_start();
+session_start();
 include 'header.php';
 include 'menu.php';
+include 'security.php';
+
+$token = generateCsrfToken();
+storeCsrfToken($conn,$token);
 
 // Database connection assumed to be included
 
@@ -52,7 +56,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['userEmail'])) {
     $sharedMissions = $resultSharedMissions->fetch_all(MYSQLI_ASSOC);
 } else {
     header("location: login.php");
-    exit;
+    // exit;
 }
 ?>
 
@@ -62,13 +66,14 @@ if (window.history.replaceState) {
 }
 </script>
 
+
 <div class="container mt-5 pt-5">
     <h3 class="text-center text-info">Missions de l'utilisateur</h3>
     
     <!-- Buttons for shared tasks and shared missions -->
     <div class="text-center mb-4">
-        <button class="btn btn-primary" onclick="document.getElementById('shared-tasks').style.display='block';">Afficher les Tâches Partagées</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('shared-missions').style.display='block';">Afficher les Missions Partagées</button>
+        <button class="btn btn-primary" onclick="document.getElementById('shared-tasks').style.display='block';">Afficher les Tâches Partagées avec vous </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('shared-missions').style.display='block';">Afficher les Missions Partagées avec vous</button>
     </div>
 
     <!-- Display shared tasks -->
@@ -102,6 +107,7 @@ if (window.history.replaceState) {
                                         <label for="task_priority">Priorité:</label>
                                         <input type="text" class="form-control" name="task_priority" value="<?= htmlspecialchars($task['priorite']) ?>" required>
                                     </div>
+                                    <input type="hidden" name="csrf_token_edit_task_partage" value="<?=$token?>">
                                     <button type="submit" name="updateTask" class="btn btn-success">Enregistrer</button>
                                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-task-form-<?= $task['id'] ?>').style.display='none';">Annuler</button>
                                 </form>
@@ -136,6 +142,7 @@ if (window.history.replaceState) {
                                         <label for="mission_description">Description de la Mission:</label>
                                         <input type="text" class="form-control" name="mission_description" value="<?= htmlspecialchars($mission['description']) ?>" required>
                                     </div>
+                                    <input type="hidden" name="csrf_token_share_mision" value="<?=$token?>">
                                     <button type="submit" name="updateMission" class="btn btn-success">Enregistrer</button>
                                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-form-<?= $mission['id'] ?>').style.display='none';">Annuler</button>
                                 </form>
@@ -185,6 +192,10 @@ if (window.history.replaceState) {
 <?php
 // Handle mission update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateMission'])) {
+
+    $csrf_token_share_mision = $_POST['csrf_token_share_mision'];
+    if (verifyCsrfToken($conn,$csrf_token_share_mision)) {
+
     $missionId = $_POST['mission_id'];
     $missionName = htmlspecialchars($_POST['mission_name'], ENT_QUOTES, 'UTF-8');
     $missionDescription = htmlspecialchars($_POST['mission_description'], ENT_QUOTES, 'UTF-8');
@@ -203,12 +214,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateMission'])) {
     $stmtUpdateMission->close();
     
     // Reload the page after update
-    header('location: ' . $_SERVER['PHP_SELF']);
-    exit;
+    // header('location: ' . $_SERVER['PHP_SELF']);
+    // exit;
+    }else{
+        header('location: logout.php');
+    }
 }
 
 // Handle task update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateTask'])) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateTask'])) {
+
+    $csrf_token_edit_task_partage = $_POST['csrf_token_edit_task_partage'];
+    if (verifyCsrfToken($conn,$csrf_token_edit_task_partage)) {
+        
     $taskId = $_POST['task_id'];
     $taskName = htmlspecialchars($_POST['task_name'], ENT_QUOTES, 'UTF-8');
     $taskDescription = htmlspecialchars($_POST['task_description'], ENT_QUOTES, 'UTF-8');
@@ -231,6 +249,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateTask'])) {
     // Reload the page after update
     header('location: ' . $_SERVER['PHP_SELF']);
     exit;
+    }else{
+        header('location: logout.php');
+        exit;
+    }
 }
 ?>
 

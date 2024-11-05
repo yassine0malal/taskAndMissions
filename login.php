@@ -1,30 +1,10 @@
 <?php
     session_start();
     include 'header.php';
-    // include 'condb.php';
-    // var_dump($_SESSION);
-    // if (empty($_SESSION['csrf_token'])) {
-        
-        $_SESSION['csrf_token']  = bin2hex(random_bytes(32));  // Generate a random token
-        $cle=$_SESSION['csrf_token'];
+    include 'security.php';
 
-        $_SESSION['depart']='desactiver';
-            $sql = "INSERT INTO tokens (nom) VALUES (?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("s", $cle);  // Bind the token as a string parameter
-            $stmt->execute();
-            $stmt->close();
-// echo $cle;
-            // $sqlGet = "select * from tokens";
-            // $resultGet = $conn->query($sqlGet);
-            // $rowGet = $resultGet->fetch_assoc();
-
-    // }else{
-    //     $cle=$_SESSION['csrf_token'];
-
-
-    // }
-    // echo $_SESSION['csrf_token'];
+$token = generateCsrfToken();
+storeCsrfToken($conn,$token);
 
     ?>
 
@@ -84,7 +64,7 @@
         <div class="form-warp">
         <form  method="post" action="index.php">
             <h1>Log In</h1>
-            <input type="hidden" name="csrf_token" value="<?= $cle; ?>">
+            <input type="hidden" name="csrf_token" value="<?= $token; ?>">
 
             <input type="text" name="email" placeholder=" entrer l'email ">
             <input type="password" name="password" required placeholder=" entrer le mot de passe ">

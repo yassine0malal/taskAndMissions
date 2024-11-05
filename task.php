@@ -3,16 +3,10 @@ session_start();
 
 include 'header.php';
 include 'menu.php';
+include "security.php";
 
-function csrf () {
-    if (isset($_SESSION['csrf_token'])) {
-        return $_SESSION['csrf_token'];
-    } else {
-        $token = bin2hex(random_bytes(32));
-        $_SESSION['csrf_token'] = $token;
-        return $token;
-    }
-}
+$token = generateCsrfToken();
+storeCsrfToken($conn,$token);
 
 // Database connection assumed to be included
 
@@ -28,9 +22,6 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['userEmail'])) {
     $result = $stmt->get_result();
     $datas = $result->fetch_all(MYSQLI_ASSOC);
 
-    // $result = mysqli_query($conn, $sql);
-    // $datas = mysqli_fetch_all($result, MYSQLI_ASSOC);
-
     // Fetch users to share tasks with (excluding the current user)
     $sqlUsers = "SELECT id, nom FROM users WHERE id != ?";
     $stmtUsers = $conn->prepare($sqlUsers);
@@ -39,8 +30,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['userEmail'])) {
     $resultUsers = $stmtUsers->get_result();
     $users = $resultUsers->fetch_all(MYSQLI_ASSOC);
 
-    // $resultUsers = mysqli_query($conn, $sqlUsers);
-    // $users = mysqli_fetch_all($resultUsers, MYSQLI_ASSOC);
+   
 } else {
     header("location: login.php");
     exit;
@@ -55,7 +45,6 @@ if (window.history.replaceState) {
 
 <div class="container">
     <div class="container-flixed alert alert-primary p-5 m-5">
-        <!-- <div class="alert alert-success" role="alert"> -->
             <form action="task.php" method="POST" class="m-5 p-5">
                 <h3 class="text-center">Ajouter une Task</h3>
                 <div class="form-group">
@@ -75,13 +64,12 @@ if (window.history.replaceState) {
                 <div class="form-group">
                     <input type="text" class="form-control" placeholder="Entrer la priorite de la tache" name="priorite" required>
                 </div>
-                <input type="hidden" name="csrf_token_task" value="<?= csrf() ?>">
+                <input type="hidden" name="csrf_token_create_task" value="<?=$token  ?>">
                 <br><br>
                 <div class="text-center">
                     <button type="submit" class="btn btn-primary mb-2" name="createTask">Create</button>
                 </div>
             </form>
-        <!-- </div> -->
     </div>
 
     <!-- Display user's tasks -->
@@ -97,7 +85,7 @@ if (window.history.replaceState) {
                                 <form method="post">
                                     <input type="hidden" name="id" value="<?= $data['id'] ?>">
                                     <input type="hidden" name="nn" value="<?= $data['nom'] ?>">
-                                    <input type="hidden" name="csrfSupp" value="<?= csrf();?>">
+                                    <input type="hidden" name="csrf_token_supprimer" value="<?=$token?>">
                                     <button type="submit" class="btn btn-danger" name="envoyer">Supprimer</button>
                                     <button type="button" class="btn btn-warning" onclick="document.getElementById('edit-form-<?= $data['id'] ?>').style.display='block';">Modifie</button>
                                     <button type="button" class="btn btn-success" onclick="document.getElementById('share-form-<?= $data['id'] ?>').style.display='block';">Share</button>
@@ -123,7 +111,7 @@ if (window.history.replaceState) {
                                             <label for="priorite">Priorité</label>
                                             <input type="text" class="form-control" name="priorite" value="<?= $data['priorite'] ?>" required>
                                         </div>
-                                        <input type="hidden" name="csrf_token_task_modifie" value="<?= csrf() ?>">
+                                        <input type="hidden" name="csrf_token_edit_task" value="<?=$token?>">
                                         <div class="text-center">
                                             <button type="submit" name="updateTask" class="btn btn-success">Enregistrer</button>
                                             <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-form-<?= $data['id'] ?>').style.display='none';">Annuler</button>
@@ -151,7 +139,7 @@ if (window.history.replaceState) {
                                                 <option value="edit">Modification</option>
                                             </select>
                                         </div>
-                                        <input type="hidden" name="csrf_token_task_share" value="<?= csrf() ?>">
+                                        <input type="hidden" name="csrf_token_share_task" value="<?=$token?>">
                                         <div class="text-center">
                                             <button type="submit" name="shareTask" class="btn btn-primary">Partager</button>
                                             <button type="button" class="btn btn-secondary" onclick="document.getElementById('share-form-<?= $data['id'] ?>').style.display='none';">Annuler</button>
@@ -169,14 +157,12 @@ if (window.history.replaceState) {
     <?php
     // Handle task creation
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
         if (isset($_POST['createTask']) && $_POST['form_type'] === 'createTask') {
-//             var_dump("from function".$_POST['csrf_token_task']);
-// var_dump($_SESSION['csrf_token']);
-// exit();
-            if(!isset($_POST['csrf_token_task']) || $_POST['csrf_token_task'] !== $_SESSION['csrf_token']) {
-                die('Invalid CSRF token for task creation.');
-            }
-            unset($_SESSION['csrf_token']);
+            $csrf_token_create_task = $_POST['csrf_token_create_task'];
+            if (verifyCsrfToken($conn,$csrf_token_create_task)) {
+
+            
             $nom = htmlspecialchars($_POST['nom'], ENT_QUOTES, 'UTF-8');
             $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
             $result = htmlspecialchars($_POST['result'], ENT_QUOTES, 'UTF-8');
@@ -197,15 +183,19 @@ if (window.history.replaceState) {
             $stmt22->close();
             
             
-            // Reload the page
-            // header('location: ' . $_SERVER['PHP_SELF']);
-            // exit;
+            
+        }else{
+            header("loction: logout.php");
+            exit;
         }
+    }
 
         // Handle task updating
-        if (isset($_POST['updateTask']) and $_POST['csrf_token_task_modifie'] == $_SESSION['csrf_token']) {
-            unset($_SESSION['csrf_token']);
+        if (isset($_POST['updateTask'])) {
 
+            $csrf_token_edit_task = $_POST['csrf_token_edit_task'];
+            if (verifyCsrfToken($conn,$csrf_token_edit_task)) {
+                
             $taskId = $_POST['task_id'];
             $nom = htmlspecialchars($_POST['nom'], ENT_QUOTES, 'UTF-8');
             $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
@@ -226,14 +216,17 @@ if (window.history.replaceState) {
             $stmtUpdate->execute();
             $stmtUpdate->close();
 
-            // Reload the page after update
-            // header('location: ' . $_SERVER['PHP_SELF']);
-            // exit;
+          
+        }else{
+            header("location: logout.php");
+            exit;
         }
+    }
 
         // Handle task sharing (Insert or Update)
-        if (isset($_POST['shareTask'])and  $_POST['csrf_token_task_share'] == $_SESSION['csrf_token']) {
-            unset($_SESSION['csrf_token']);
+        if (isset($_POST['shareTask'])) {
+            $csrf_token_share_task = $_POST['csrf_token_share_task'];
+            if (verifyCsrfToken($conn,$csrf_token_share_task)) {
 
             $taskId = $_POST['task_id'];
             $sharedUserId = $_POST['shared_user_id'];
@@ -254,7 +247,7 @@ if (window.history.replaceState) {
                 $stmtUpdate->execute();
                 $stmtUpdate->close();
                 // register the operation 
-                $operation = 'update sharing task to  ' . $sharedUserId;
+                $operation = 'update sharing task to id  ' . $sharedUserId;
                 $sql22 = "INSERT INTO operations (user_id ,operation ) VALUES (?,?) ";
                 $stmt22 = $conn->prepare($sql22);
                 $stmt22->bind_param("is", $userId, $operation);
@@ -280,16 +273,20 @@ if (window.history.replaceState) {
 
             $stmtCheck->close();
             
-            // Reload the page after sharing
-            // header('location: ' . $_SERVER['PHP_SELF']);
-            // exit;
+           
+        }else{
+            // header('location: logout.php');
+            unset($_SESSION['user_id']);
+            die("connection fialed");
+            exit;
         }
-
+    }
     }
 
     // Handle task deletion
-    if (isset($_POST['envoyer'])and $_SESSION['csrf_token'] == $_POST['csrfSupp']) {
-        unset($_SESSION['csrf_token']);
+    if (isset($_POST['envoyer'])) {
+        $csrf_token_supprimer_task = $_POST['csrf_token_supprimer'];
+        if (verifyCsrfToken($conn,$csrf_token_supprimer_task)) {
         $id = $_POST['id'];
         $nomc = $_POST['nn'];
 
@@ -305,8 +302,11 @@ if (window.history.replaceState) {
         $stmt22->bind_param("is", $userId, $operation);
         $stmt22->execute();
         $stmt22->close();
-        // $result = mysqli_query($conn, $sql);
+    }else{
+        header("location: logout.php");
+        exit();
     }
+}
     ?>
 </div>
 

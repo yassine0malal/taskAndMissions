@@ -2,6 +2,10 @@
 session_start();
 include 'header.php';
 include 'menu.php';
+include 'security.php';
+
+$token = generateCsrfToken();
+storeCsrfToken($conn,$token);
 
 // Check if user is logged in
 if (isset($_SESSION['user_id']) && isset($_SESSION['userEmail'])) {
@@ -74,6 +78,7 @@ if (window.history.replaceState) {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+                                    <input type="hidden" name="csrf_assosie" value="<?=$token?>">
                                     <div class="text-center">
                                         <button type="submit" name="associateTask" class="btn btn-primary">Associer</button>
                                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('associate-form-<?= $task['id'] ?>').style.display='none';">Annuler</button>
@@ -90,6 +95,9 @@ if (window.history.replaceState) {
     <?php
     // Handle task association with mission
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['associateTask'])) {
+        $csrf_assosie = $_POST['csrf_assosie'];
+        if (verifyCsrfToken($conn,$csrf_assosie)) {
+
         $taskId = htmlspecialchars($_POST['task_id']);
         $missionId = htmlspecialchars($_POST['mission_id']);
 
@@ -109,7 +117,11 @@ if (window.history.replaceState) {
         // Reload the page to reflect changes
         // header('location: ' . $_SERVER['PHP_SELF']);
         // exit;
+    }else{
+        header('location: logout.php');
+        exit;
     }
+}
     ?>
 </div>
 

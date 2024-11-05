@@ -2,21 +2,16 @@
 session_start();
 include_once 'header.php';
 include_once 'menu.php';
-function csrf () {
-    if (isset($_SESSION['csrf_token'])) {
-        return $_SESSION['csrf_token'];
-    } else {
-        $token = bin2hex(random_bytes(32));
-        $_SESSION['csrf_token'] = $token;
-        return $token;
-    }
-}
-// $_SESSION['csrf_token']  = bin2hex(random_bytes(32));  // Generate a random token
-// $cle = $_SESSION['csrf_token'];
+include_once "security.php";
 
-// echo "<br><br><br>".$_SESSION['csrf_token'];
+$token = generateCsrfToken();
+storeCsrfToken($conn,$token);
 ?>
-
+<script>
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+}
+</script>
 <?php
 // Database connection assumed to be included
 if (isset($_SESSION['user_id']) and isset($_SESSION['userEmail'])) {
@@ -29,11 +24,10 @@ if (isset($_SESSION['user_id']) and isset($_SESSION['userEmail'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['createMiss'])) {
-// var_dump("from function".$_POST['csrf_token_mession']);
-// var_dump($_SESSION['csrf_token']);
-if($_POST['csrf_token_mession'] == $_SESSION['csrf_token']){
-    unset($_SESSION['csrf_token']);
-    // exit();
+        $createMissionToken = $_POST['createToken'];
+
+        if (verifyCsrfToken($conn,$createMissionToken)) {
+
         $nom = htmlspecialchars($_POST['nom']);
         $description =htmlspecialchars($_POST['description']);
         // register the insertion of mission
@@ -53,12 +47,17 @@ if($_POST['csrf_token_mession'] == $_SESSION['csrf_token']){
         }else {
             var_dump("Error: " . $sql . "<br>" .$conn->error);
         }
+    } else {
+    header("location: logout.php");
+        exit;
     }
     }
 
     // If the share form is submitted
-    if (isset($_POST['shareMission']) and $_POST['csrf_token_mission_share_choise'] == $_SESSION['csrf_token']) {
-        unset($_SESSION['csrf_token']);
+    if (isset($_POST['shareMission'])) {
+        $csrf_shareMission = $_POST['csrf_shareMission'];
+        if (verifyCsrfToken($conn,$csrf_shareMission)) {
+
 
         $missionId = htmlspecialchars($_POST['mission_id']); // The mission to be shared
         $sharedUserId = htmlspecialchars($_POST['shared_user_id']); // The user selected to share the mission with
@@ -94,7 +93,7 @@ if($_POST['csrf_token_mession'] == $_SESSION['csrf_token']){
                 $stmtUpdate->close();
                 echo '<script type="text/javascript">alert("Les droits d\'accès ont été effecter avec success!");</script>';
             } else {
-                var_dump("Erreur lors de la mise à jour des droits: " . $conn->error);
+                // var_dump("Erreur lors de la mise à jour des droits: " . $conn->error);
             }
         } else {
             // If not already shared, insert a new record
@@ -118,7 +117,11 @@ if($_POST['csrf_token_mession'] == $_SESSION['csrf_token']){
                 var_dump("Erreur lors du partage de la mission: " . $conn->error);
             }
         }
+    }else{
+        header("location: logout.php");
+        exit;
     }
+}
 }
 
 // Select user missions
@@ -128,8 +131,6 @@ $stmt2->bind_param("i", $userId);
 $stmt2->execute();
 $result2 = $stmt2->get_result();
 $datas2 = mysqli_fetch_all($result2, MYSQLI_ASSOC);
-// $result2 = mysqli_query($conn, $sql2);
-// $datas2 = mysqli_fetch_all($result2, MYSQLI_ASSOC);
 
 // Fetch users for sharing
 $sqlUsers = "SELECT id, nom FROM users WHERE id !=?"; // Assuming you have a 'users' table
@@ -138,12 +139,13 @@ $stmtUsers->bind_param("i", $userId);
 $stmtUsers->execute();
 $resultUsers = $stmtUsers->get_result();
 $users = mysqli_fetch_all($resultUsers, MYSQLI_ASSOC);
-// $resultUsers = mysqli_query($conn, $sqlUsers);
-// $users = mysqli_fetch_all($resultUsers, MYSQLI_ASSOC);
+
 
 // If the modify form is submitted
-if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== $_SESSION['csrf_token']) {
-    unset($_SESSION['csrf_token']);
+if (isset($_POST['modifierMission'])) {
+    $csrf_modifie = $_POST['csrf_modifie'];
+    if (verifyCsrfToken($conn,$csrf_modifie)) {
+
     $id = htmlspecialchars($_POST['id']);
     $nom = htmlspecialchars($_POST['nom']);
     $description = htmlspecialchars($_POST['description']);
@@ -161,13 +163,15 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
     $resultUpdate = $stmtUpdate->execute();
     $stmtUpdate->close();
 
-    // $resultUpdate = mysqli_query($conn, $sqlUpdate);
-
     if ($resultUpdate) {
         header("location: mission.php");
     } else {
         var_dump("Error: " . $sqlUpdate . "<br>" . $conn->error);
     }
+}else{
+    header("location: logout.php");
+    exit;
+}
 }
 
 ?>
@@ -184,7 +188,7 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
                     <input type="text" class="form-control" placeholder="Entrer la description de la mission" name="description" required>
                 </div>
                 <br><br>
-                <input type="hidden" name="csrf_token_mession" value="<?= csrf() ?>">
+                <input type="hidden" name="createToken" value="<?=$token ?>">
                 <div class="text-center">
                     <button type="submit" name="createMiss" class="btn btn-primary mb-2">Create</button>
                 </div>
@@ -214,8 +218,8 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
                                 <label for="description">Description</label>
                                 <input type="text" class="form-control" name="description" value="<?= $data2['description'] ?>" required>
                             </div>
+                            <input type="hidden" name="csrf_modifie" value="<?=$token?>">
                             <div class="text-center">
-                                <input type="hidden" name="csrf_token_mission_modifie" value="<?= csrf(); ?>">
                                 <button type="submit" name="modifierMission" class="btn btn-success">Enregistrer</button>
                                 <button type="button" class="btn btn-secondary" onclick="window.location.href='mission.php'">Annuler</button>
                             </div>
@@ -224,7 +228,8 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
                         <form action="" method="post" class="text-center ">
                             <input type="hidden" name="id" value="<?= $data2['id'] ?>">
                             <input type="hidden" name="nn" value="<?= $data2['nom']; ?>">
-                            <input type="hidden" name="csrf_token_mission_share" value="<?= csrf(); ?>">
+                            <input type="hidden" name="csrf_delteMission" value="<?=$token?>">
+
                             <button type="submit" class="btn btn-danger me-4" name="supprimer">Supprimer</button>
                             <button type="submit" class="btn btn-warning me-4" name="modifier">Modifier</button>
                             <button type="button" class="btn btn-success me-4" onclick="document.getElementById('share-form-<?= $data2['id'] ?>').style.display='block';">Share</button>
@@ -249,8 +254,8 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
                                         <option value="view">Consultation</option>
                                         <option value="edit">Modification</option>
                                     </select>
-                                    <input type="hidden" name="csrf_token_mission_share_choise" value="<?= csrf(); ?>">
                                 </div>
+                                <input type="hidden" name="csrf_shareMission" value="<?=$token?>">
                                 <div class="text-center">
                                     <button type="submit" name="shareMission" class="btn btn-primary">Partager</button>
                                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('share-form-<?= $data2['id'] ?>').style.display='none';">Annuler</button>
@@ -270,9 +275,10 @@ if (isset($_POST['modifierMission']) and $_POST['csrf_token_mission_modifie']== 
 
 <?php
 // Delete Mission
-if (isset($_POST['supprimer']) and $_POST['csrf_token_mission_share'] == $_SESSION['csrf_token']) {
-    unset($_SESSION['csrf_token']);
-    // exit();
+if (isset($_POST['supprimer'])) {
+    $csrf_delteMission = $_POST['csrf_delteMission'];
+    if (verifyCsrfToken($conn,$csrf_delteMission)) {
+
     $id = $_POST['id'];
     $nomc = $_POST['nn'];
     $sql5 = "DELETE FROM missions WHERE id = ?";
@@ -291,6 +297,11 @@ if (isset($_POST['supprimer']) and $_POST['csrf_token_mission_share'] == $_SESSI
     } else {
         var_dump("Error: " . $sql5 . "<br>" . $stmt->error);;
     }
+} else {
+    header("location: logout.php");
+    exit;
 }
+}
+
 include('footer.php');
 ?>
