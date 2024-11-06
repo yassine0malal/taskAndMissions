@@ -203,7 +203,7 @@ if (isset($_POST['modifierMission'])) {
         <?php foreach ($datas2 as $data2): ?>
             <!-- <div class="card"> -->
                 <div class="card-body">
-                    <h5 class="card-title text-center">La Mission : <?= $data2['nom'] ?></h5>
+                    <a class="text-decoration-none" href="getSingleOne.php?id=<?=$data2['id']?>"><h5 class="card-title text-center">La Mission : <?= $data2['nom'] ?></h5></a>
                     <p class="card-text text-center"><?= $data2['description'] ?></p>
 
                     <!-- Display Modify Form if 'modifier' button is clicked -->

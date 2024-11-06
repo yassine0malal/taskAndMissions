@@ -58,6 +58,10 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['userEmail'])) {
     header("location: login.php");
     // exit;
 }
+
+function storeOperation($conn , $event){
+   
+}
 ?>
 
 <script>
@@ -201,21 +205,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateMission'])) {
     $missionDescription = htmlspecialchars($_POST['mission_description'], ENT_QUOTES, 'UTF-8');
 
     // Update the mission
+    $sqlUsers = "SELECT * FROM users WHERE id = ?";
+    $stmtUsers = $conn->prepare($sqlUsers);
+    $stmtUsers->bind_param("i", $userId);
+    $stmtUsers->execute();
+    $res = $stmtUsers->get_result();
+    $row = $res->fetch_assoc();
+
+    $operationTaskOther = "the user ".$row['nom']." who edit this mission to "."'".$missionName."'";
+
+    
     $sqlUpdateMission = "UPDATE missions SET nom = ?, description = ? WHERE id = ?";
     $stmtUpdateMission = $conn->prepare($sqlUpdateMission);
     $stmtUpdateMission->bind_param("ssi", $missionName, $missionDescription, $missionId);
     
     if ($stmtUpdateMission->execute()) {
         echo '<script type="text/javascript">alert("Mission mise à jour avec succès!");</script>';
+        $sqlOperationTask= "INSERT INTO operations (user_id,operation,missionID) values (?,?,?)";
+        $stmtOperationTask = $conn->prepare($sqlOperationTask);
+        $stmtOperationTask->bind_param("isi",$userId, $operationTaskOther,$missionId);
+        $stmtOperationTask->execute();
     } else {
         echo '<script type="text/javascript">alert("Erreur lors de la mise à jour de la mission.");</script>';
     }
 
     $stmtUpdateMission->close();
     
-    // Reload the page after update
-    // header('location: ' . $_SERVER['PHP_SELF']);
-    // exit;
+ 
     }else{
         header('location: logout.php');
     }
@@ -233,18 +249,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateTask'])) {
     $taskResult = htmlspecialchars($_POST['task_result'], ENT_QUOTES, 'UTF-8');
     $taskPriority = htmlspecialchars($_POST['task_priority'], ENT_QUOTES, 'UTF-8');
 
-    // Update the task
+    // Update the task and store the operation 
+
     $sqlUpdateTask = "UPDATE tasks SET nom = ?, description = ?, resultat = ?, priorite = ? WHERE id = ?";
     $stmtUpdateTask = $conn->prepare($sqlUpdateTask);
     $stmtUpdateTask->bind_param("ssssi", $taskName, $taskDescription, $taskResult, $taskPriority, $taskId);
+
+    $sqlUsers = "SELECT * FROM users WHERE id = ?";
+    $stmtUsers = $conn->prepare($sqlUsers);
+    $stmtUsers->bind_param("i", $userId);
+    $stmtUsers->execute();
+    $res = $stmtUsers->get_result();
+    $row = $res->fetch_assoc();
+    // var_dump($row);
+
+    $operationTaskOther = "the user ".$row['nom']." who edit this task to "."'".$taskName."'";
+
     
     if ($stmtUpdateTask->execute()) {
         echo '<script type="text/javascript">alert("Tâche mise à jour avec succès!");</script>';
+        
+        $sqlOperationTask= "INSERT INTO operations (user_id,operation,taskID) values (?,?,?)";
+        $stmtOperationTask = $conn->prepare($sqlOperationTask);
+        $stmtOperationTask->bind_param("isi",$userId, $operationTaskOther,$taskId,);
+        $stmtOperationTask->execute();
     } else {
         echo '<script type="text/javascript">alert("Erreur lors de la mise à jour de la tâche.");</script>';
     }
-
     $stmtUpdateTask->close();
+
     
     // Reload the page after update
     header('location: ' . $_SERVER['PHP_SELF']);

@@ -42,7 +42,7 @@ if (window.history.replaceState) {
     window.history.replaceState(null, null, window.location.href);
 }
 </script>
-
+<?php if(empty($_GET)): ?>
 <div class="container">
     <div class="container-flixed alert alert-primary p-5 m-5">
             <form action="task.php" method="POST" class="m-5 p-5">
@@ -72,6 +72,7 @@ if (window.history.replaceState) {
             </form>
     </div>
 
+
     <!-- Display user's tasks -->
     <div class="container-flixed alert alert-secondary p-5 m-5 text-center">
         <div class="row "style="margin-left: 330px;">
@@ -79,8 +80,8 @@ if (window.history.replaceState) {
                 <?php foreach ($datas as $data): ?>
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title"><?= $data['nom'] ?></h5>
-                            <p class="card-text"><?= $data['description'] ?></p>
+                            <a class="text-decoration-none" href="task.php?id=<?=$data['id']?>"><h5 class="card-title"><?= $data['nom'] ?></h5></a>
+                            <p class="card-text"><?= $data['description']?></p>
                             <div class="text-center">
                                 <form method="post">
                                     <input type="hidden" name="id" value="<?= $data['id'] ?>">
@@ -153,6 +154,62 @@ if (window.history.replaceState) {
             </div>
         </div>
     </div>
+<?php else: ?>
+
+<?php 
+    $taskId = isset($_GET['id']) ? $_GET['id']:'';
+    if(isset($taskId)){
+
+        $sql222 = "SELECT * FROM tasks WHERE id = ? and user_id = ?";
+        $stmt222 = $conn->prepare($sql222);
+        $stmt222->bind_param('ii',$taskId,$userId);
+        $stmt222->execute();
+        $result222 = $stmt222->get_result();
+        $row222 = $result222->fetch_assoc();
+        if(empty($row222)){
+        $row222['error'] = "this is an invalid id please don't play with this things ";
+        }
+
+        $sql22 = "SELECT * FROM operations WHERE taskID = ? ";
+        $stmt22 = $conn->prepare($sql22);
+        $stmt22->bind_param("i",$taskId);
+        $stmt22->execute();
+        $result22 = $stmt22->get_result();
+        $row22 = $result22->fetch_all(MYSQLI_ASSOC);
+    }    
+?>
+    <br><br>
+<div class="container mt-5 me-1 ">
+        <div class="card">
+        <div class="card-header"></div>
+            <div class="card-body">
+                <?php if(!isset($row222['error'])):?>
+                <h5 class="card-title">Le nom de la mission : <span class="fw-bold text-success"><?=$row222['nom']?></span></h5>
+                <p class="card-text"> <strong>Description</strong> : <?=$row222['description']?></p>
+                <p class="card-text"> <strong>resultat</strong> : <?=$row222['resultat']?></p>
+                <p class="card-text"> <strong>priorite</strong> : <?=$row222['priorite']?></p>
+                <?php else: ?>
+                <p><?=$row222['error'];?></p>
+                <?php endif;?>
+            </div>
+            <hr>
+            <div class="card-body">
+                <h4>les operations sur cette task </h4>
+                <?php if(empty($row22)):?>
+                    <h6>il y' a pas d'operations</h6>
+                <?php else:?>
+                <ul>
+                <?php foreach($row22 as $value):?>
+                <li> <?=$value['operation'] ?></li>
+                <?php endforeach;?>
+                </ul>
+                <?php endif;?>
+            </div>
+            <a href="task.php" class="btn btn-primary">Back</a>
+        </div>
+</div>
+
+<?php endif; ?>
 
     <?php
     // Handle task creation
